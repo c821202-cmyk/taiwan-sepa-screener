@@ -2,9 +2,11 @@ name: 每日台股 SEPA 選股
 
 on:
   schedule:
-    # 台灣時間 17:30 = UTC 09:30
     - cron: '30 9 * * 1-5'
-  workflow_dispatch:  # 允許手動觸發
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   run-screener:
