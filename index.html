@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台股 SEPA 選股系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0a;
+    --bg2: #111711;
+    --bg3: #161e16;
+    --border: rgba(74,222,128,0.12);
+    --border2: rgba(74,222,128,0.25);
+    --green: #4ade80;
+    --green-dim: #22c55e;
+    --green-dark: #166534;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --text: #e2f5e2;
+    --text2: #86a886;
+    --text3: #4a6e4a;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,222,128,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,222,128,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(10,15,10,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(74,222,128,0); }
+  }
+
+  .logo-text { font-size: 15px; font-weight: 500; letter-spacing: 0.05em; }
+  .logo-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+
+  /* Hero */
+  .hero {
+    padding: 48px 0 32px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  .hero h1 {
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .hero h1 span { color: var(--green); font-weight: 500; }
+
+  .hero-desc {
+    font-size: 13px;
+    color: var(--text3);
+  }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .stat:hover { border-color: var(--border2); }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .stat-value {
+    font-size: 28px;
+    font-weight: 500;
+    font-family: var(--mono);
+    color: var(--green);
+    line-height: 1;
+  }
+
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.dim { color: var(--text2); }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    font-size: 12px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { border-color: var(--border2); color: var(--text2); }
+  .filter-btn.active { border-color: var(--green); color: var(--green); background: rgba(74,222,128,0.08); }
+
+  /* Table */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeUp 0.6s ease 0.3s both;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+  }
+
+  thead {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  thead th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(74,222,128,0.04); }
+
+  tbody td {
+    padding: 12px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .td-rank {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    width: 40px;
+  }
+
+  .td-code {
+    font-family: var(--mono);
+    font-weight: 500;
+    color: var(--green);
+    font-size: 13px;
+  }
+
+  .td-name { font-weight: 500; color: var(--text); }
+  .td-sector { color: var(--text3); font-size: 12px; }
+
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 36px;
+  }
+  .score-num.high { color: var(--green); }
+  .score-num.mid { color: var(--amber); }
+  .score-num.low { color: var(--text3); }
+
+  .score-bar-bg {
+    width: 50px; height: 3px;
+    background: rgba(74,222,128,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--green);
+    transition: width 0.8s ease;
+  }
+  .score-bar-fill.mid { background: var(--amber); }
+  .score-bar-fill.low { background: var(--text3); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 500;
+  }
+
+  .badge-buy { background: rgba(74,222,128,0.15); color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+  .badge-watch { background: rgba(251,191,36,0.1); color: var(--amber); border: 1px solid rgba(251,191,36,0.25); }
+  .badge-wait { background: rgba(255,255,255,0.04); color: var(--text3); border: 1px solid var(--border); }
+
+  .td-pass { font-family: var(--mono); font-size: 12px; color: var(--green); }
+  .td-fail { font-family: var(--mono); font-size: 12px; color: var(--text3); }
+  .td-trend { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .td-eps { font-family: var(--mono); font-size: 12px; }
+  .td-eps.pos { color: var(--green); }
+  .td-eps.neg { color: var(--red); }
+  .td-eps.na { color: var(--text3); }
+  .td-price { font-family: var(--mono); font-size: 13px; color: var(--text); }
+  .td-chg { font-family: var(--mono); font-size: 12px; }
+  .td-chg.neg { color: var(--red); }
+  .td-chg.pos { color: var(--green); }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    gap: 16px;
+    color: var(--text3);
+  }
+
+  .loading-spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Empty */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 48px;
+    padding: 24px 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  /* Detail row */
+  .detail-row { display: none; }
+  .detail-row.open { display: table-row; }
+  .detail-row td {
+    background: var(--bg3);
+    padding: 16px 20px;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .detail-item label {
+    display: block;
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+  }
+
+  .detail-item span {
+    font-size: 14px;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  /* Update time */
+  .update-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .update-bar a {
+    color: var(--text3);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1px;
+    transition: color 0.15s;
+  }
+
+  .update-bar a:hover { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        <div>
+          <div class="logo-text">台股 SEPA 選股</div>
+          <div class="logo-sub">Minervini Method</div>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="status-pill">
+          <div class="status-dot"></div>
+          <span id="updateTime">載入中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="hero-date" id="heroDate">—</div>
+    <h1>今日 <span>SEPA</span> 選股結果</h1>
+    <div class="hero-desc">趨勢模板 8 項條件 · VCP 縮量型態 · EPS 加速成長</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">可進場</div>
+      <div class="stat-value" id="s-buy">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">觀察中</div>
+      <div class="stat-value amber" id="s-watch">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">待確認</div>
+      <div class="stat-value dim" id="s-wait">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">總篩選數</div>
+      <div class="stat-value dim" id="s-total">—</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterBy('all', this)">全部</button>
+    <button class="filter-btn" onclick="filterBy('可進場', this)">可進場</button>
+    <button class="filter-btn" onclick="filterBy('觀察', this)">觀察</button>
+    <button class="filter-btn" onclick="filterBy('待確認', this)">待確認</button>
+    <button class="filter-btn" onclick="filterBy('vcp', this)">VCP 型態</button>
+    <button class="filter-btn" onclick="filterBy('8/8', this)">趨勢 8/8</button>
+  </div>
+
+  <div class="update-bar">
+    <span id="resultCount">載入中...</span>
+    <a href="https://docs.google.com/spreadsheets/d/1qDVu1pGATI5M2Oz6YRmyhFTJ5q9t_w7D3CgJfO-DWMA" target="_blank">開啟 Google Sheets ↗</a>
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">載入今日選股資料...</div>
+    </div>
+    <table id="mainTable" style="display:none">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>代號</th>
+          <th>名稱</th>
+          <th>產業</th>
+          <th>SEPA 評分</th>
+          <th>趨勢</th>
+          <th>VCP</th>
+          <th>EPS 年成長</th>
+          <th>現價</th>
+          <th>距高點</th>
+          <th>訊號</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty" id="emptyMsg" style="display:none">今日暫無符合條件的股票</div>
+  </div>
+</main>
+
+<footer class="wrap">
+  <span>台股 SEPA 選股系統 · 資料來源 FinMind · 每日 17:30 自動更新</span>
+  <span>僅供學習研究，不構成投資建議</span>
+</footer>
+
+<script>
+// ====== 設定你的 Google Sheets ID ======
+const SHEET_ID = '1qDVu1pGATI5M2Oz6YRmyhFTJ5q9t_w7D3CgJfO-DWMA';
+const SHEET_NAME = '工作表1';
+
+let allData = [];
+let currentFilter = 'all';
+let openRow = null;
+
+async function loadData() {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    const rows = json.table.rows;
+    const cols = json.table.cols.map(c => c.label);
+
+    if (rows.length < 2) throw new Error('no data');
+
+    // Skip header row (row 0), parse from row 1
+    allData = rows.slice(1).map(row => {
+      const obj = {};
+      cols.forEach((col, i) => {
+        obj[col] = row.c[i] ? (row.c[i].v !== null ? row.c[i].v : row.c[i].f || '') : '';
+      });
+      return obj;
+    }).filter(r => r['代號']);
+
+    const updateDate = allData[0]?.['日期'] || '—';
+    document.getElementById('heroDate').textContent = updateDate;
+    document.getElementById('updateTime').textContent = `更新：${updateDate}`;
+
+    const buyCount   = allData.filter(r => r['訊號'] === '可進場').length;
+    const watchCount = allData.filter(r => r['訊號'] === '觀察').length;
+    const waitCount  = allData.filter(r => r['訊號'] === '待確認').length;
+
+    document.getElementById('s-buy').textContent   = buyCount;
+    document.getElementById('s-watch').textContent = watchCount;
+    document.getElementById('s-wait').textContent  = waitCount;
+    document.getElementById('s-total').textContent = allData.length;
+
+    renderTable(allData);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('mainTable').style.display = 'table';
+
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="color:var(--text3);font-family:var(--mono);font-size:12px;text-align:center">
+        資料載入失敗<br>請確認 Google Sheets 已設為公開
+      </div>`;
+    console.error(e);
+  }
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  document.getElementById('resultCount').textContent = `顯示 ${data.length} 筆`;
+
+  if (data.length === 0) {
+    document.getElementById('mainTable').style.display = 'none';
+    document.getElementById('emptyMsg').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('mainTable').style.display = 'table';
+  document.getElementById('emptyMsg').style.display = 'none';
+
+  data.forEach((row, idx) => {
+    const score = parseFloat(row['SEPA評分']) || 0;
+    const scoreClass = score >= 80 ? 'high' : score >= 60 ? 'mid' : 'low';
+    const barClass   = score >= 80 ? '' : score >= 60 ? 'mid' : 'low';
+    const signal = row['訊號'] || '—';
+    const badgeClass = signal === '可進場' ? 'badge-buy' : signal === '觀察' ? 'badge-watch' : 'badge-wait';
+    const eps = row['EPS年成長'] || '—';
+    const epsClass = eps.startsWith('+') ? 'pos' : eps.startsWith('-') ? 'neg' : 'na';
+    const highPct = row['距高點%'] || '—';
+    const highClass = highPct.startsWith('-') ? 'neg' : 'pos';
+    const vcpPass = row['VCP型態'] === '是';
+    const trendPass = row['趨勢通過'] === '是';
+    const rowId = `row-${idx}`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-rank">${row['排名'] || idx+1}</td>
+      <td class="td-code">${row['代號']}</td>
+      <td class="td-name">${row['股票名稱'] || '—'}</td>
+      <td class="td-sector">${row['產業'] || '—'}</td>
+      <td>
+        <div class="score-wrap">
+          <span class="score-num ${scoreClass}">${score}</span>
+          <div class="score-bar-bg"><div class="score-bar-fill ${barClass}" style="width:${score}%"></div></div>
+        </div>
+      </td>
+      <td class="${trendPass ? 'td-pass' : 'td-trend'}">${row['趨勢條件'] || '—'}</td>
+      <td class="${vcpPass ? 'td-pass' : 'td-fail'}">${vcpPass ? '✓' : '—'}</td>
+      <td class="td-eps ${epsClass}">${eps}</td>
+      <td class="td-price">${row['現價'] || '—'}</td>
+      <td class="td-chg ${highClass}">${highPct}</td>
+      <td><span class="badge ${badgeClass}">${signal}</span></td>
+    `;
+    tr.onclick = () => toggleDetail(rowId, row);
+    tbody.appendChild(tr);
+
+    // Detail row
+    const detailTr = document.createElement('tr');
+    detailTr.className = 'detail-row';
+    detailTr.id = rowId;
+    detailTr.innerHTML = `
+      <td colspan="11">
+        <div class="detail-grid">
+          <div class="detail-item"><label>現價</label><span>${row['現價'] || '—'}</span></div>
+          <div class="detail-item"><label>距52週高點</label><span>${row['距高點%'] || '—'}</span></div>
+          <div class="detail-item"><label>距52週低點</label><span>${row['距低點%'] || '—'}</span></div>
+          <div class="detail-item"><label>趨勢條件</label><span>${row['趨勢條件'] || '—'} ${trendPass ? '✓' : ''}</span></div>
+          <div class="detail-item"><label>VCP 型態</label><span>${row['VCP型態'] || '—'}</span></div>
+          <div class="detail-item"><label>EPS 年成長</label><span>${row['EPS年成長'] || '—'}</span></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(detailTr);
+  });
+}
+
+function toggleDetail(rowId, row) {
+  const detailRow = document.getElementById(rowId);
+  if (!detailRow) return;
+  if (openRow && openRow !== rowId) {
+    const prev = document.getElementById(openRow);
+    if (prev) prev.classList.remove('open');
+  }
+  detailRow.classList.toggle('open');
+  openRow = detailRow.classList.contains('open') ? rowId : null;
+}
+
+function filterBy(type, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = type;
+
+  let filtered = allData;
+  if (type === '可進場') filtered = allData.filter(r => r['訊號'] === '可進場');
+  else if (type === '觀察') filtered = allData.filter(r => r['訊號'] === '觀察');
+  else if (type === '待確認') filtered = allData.filter(r => r['訊號'] === '待確認');
+  else if (type === 'vcp') filtered = allData.filter(r => r['VCP型態'] === '是');
+  else if (type === '8/8') filtered = allData.filter(r => r['趨勢條件'] === '8/8');
+
+  renderTable(filtered);
+}
+
+loadData();
+</script>
+</body>
+</html>
