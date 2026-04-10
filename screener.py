@@ -203,10 +203,10 @@ def update_google_sheets(result_df, sheet_id):
             ])
 
         # 清空並寫入
-        sheet.values().clear(spreadsheetId=sheet_id, range="Sheet1").execute()
-        sheet.values().update(
-            spreadsheetId=sheet_id,
-            range="Sheet1!A1",
+       sheet.values().clear(spreadsheetId=sheet_id, range="工作表1").execute()
+       sheet.values().update(
+           spreadsheetId=sheet_id,
+           range="工作表1!A1",
             valueInputOption="RAW",
             body={"values": values}
         ).execute()
