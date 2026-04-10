@@ -1,0 +1,36 @@
+name: 每日台股 SEPA 選股
+
+on:
+  schedule:
+    # 台灣時間 17:30 = UTC 09:30
+    - cron: '30 9 * * 1-5'
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  run-screener:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 取得程式碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安裝套件
+        run: pip install -r requirements.txt
+
+      - name: 執行選股
+        env:
+          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: python screener.py
+
+      - name: 儲存結果
+        uses: actions/upload-artifact@v4
+        with:
+          name: sepa-results-${{ github.run_number }}
+          path: results.json
