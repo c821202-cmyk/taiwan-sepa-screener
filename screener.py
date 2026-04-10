@@ -168,12 +168,10 @@ def calc_sepa_score(trend_cond, vcp_score, eps_yoy, from_52w_low):
 
 # ====== Google Sheets 更新 ======
 def update_google_sheets(result_df, sheet_id):
-    """透過 Google Sheets API 更新結果"""
     try:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
-        # 從環境變數讀取 service account JSON
         sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
         if not sa_json:
             print("未設定 GOOGLE_SERVICE_ACCOUNT_JSON，跳過 Sheets 更新")
@@ -202,11 +200,10 @@ def update_google_sheets(result_df, sheet_id):
                 str(row["現價"]), row["距高點%"], row["距低點%"], row["訊號"],
             ])
 
-        # 清空並寫入
-       sheet.values().clear(spreadsheetId=sheet_id, range="工作表1").execute()
-       sheet.values().update(
-           spreadsheetId=sheet_id,
-           range="工作表1!A1",
+        sheet.values().clear(spreadsheetId=sheet_id, range="工作表1").execute()
+        sheet.values().update(
+            spreadsheetId=sheet_id,
+            range="工作表1!A1",
             valueInputOption="RAW",
             body={"values": values}
         ).execute()
